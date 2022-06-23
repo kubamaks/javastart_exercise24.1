@@ -23,4 +23,9 @@ VALUES
 ('OUTCOME', 'gloceries and houskeeping in biedronka (weekly shoping)', -455.50, '2022-05-12'),
 ('OUTCOME', 'lottery ticket', -12, '2022-05-16'),
 ('INCOME', 'lottery - win', 340.00, '2022-05-17'),
-('OUTCOME', 'icecreams and coffe', -20, '2022-05-18');
+('OUTCOME', 'icecreams and coffe', -20, '2022-05-18'),
+('INCOME', 'salary', 5530.11, '2022-06-01'),
+('OUTCOME', 'rent for apartment', -650.5, '2022-06-12'),
+('OUTCOME', 'gloceries and houskeeping in biedronka (weekly shoping)', -550.12, '2022-06-14'),
+('OUTCOME', 'ticket for speeding', -500, '2022-06-17'),
+('OUTCOME', 'new phone', -2500, '2022-06-22');

@@ -1,7 +1,7 @@
 package model;
 
+import exceptions.NoResultsInResultSetException;
 import exceptions.SqlRuntimeException;
-
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDate;
@@ -14,7 +14,7 @@ class TransactionDao {
     public TransactionDao() {
         try {
             this.connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/budget_app",
-                    "root", "********");
+                    "root", "Mynewpassword1!");
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -28,20 +28,11 @@ class TransactionDao {
         }
     }
 
-    public Collection<Transaction> readTransactionsFromDataBase() {
+    public Collection<Transaction> getAllTransactions() {
         final String sql = "SELECT * FROM transaction";
-        Collection<Transaction> transactions = new ArrayList<>();
         try (Statement statement = connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery(sql);
-            while (resultSet.next()) {
-                int id = resultSet.getInt("id");
-                TransactionType type = TransactionType.valueOf(resultSet.getString("type"));
-                String description = resultSet.getString("description");
-                BigDecimal amount = resultSet.getBigDecimal("amount");
-                LocalDate date = resultSet.getDate("date").toLocalDate();
-                transactions.add(new Transaction(id, type, description, amount, date));
-            }
-            return transactions;
+            return getTransactionsFromResultSet(resultSet);
         } catch (SQLException e) {
             throw new SqlRuntimeException(e);
         }
@@ -88,4 +79,82 @@ class TransactionDao {
             throw new SqlRuntimeException(e);
         }
     }
+
+    public double sumTransactionsByType(TransactionType type) {
+        final String sql = "SELECT SUM(amount) AS sum FROM transaction WHERE type =?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, type.name());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return resultSet.getDouble("sum");
+            } else {
+                throw new RuntimeException("No data has been read");
+            }
+        } catch (SQLException e) {
+            throw new SqlRuntimeException(e);
+        }
+    }
+
+    public double getBalance() {
+        final String sql = "SELECT SUM(amount) AS balance FROM transaction";
+        try (Statement statement = connection.createStatement()) {
+            ResultSet resultSet = statement.executeQuery(sql);
+            if (resultSet.next()) {
+                return resultSet.getDouble("balance");
+            } else {
+                throw new RuntimeException("No data has been read");
+            }
+        } catch (SQLException e) {
+            throw new SqlRuntimeException(e);
+        }
+    }
+
+    public Collection<Transaction> getAllTransactionsInTimeframe(Date from, Date to) {
+        final String sql = "SELECT * FROM transaction WHERE date BETWEEN ? AND ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setDate(1, from);
+            preparedStatement.setDate(2, to);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            return getTransactionsFromResultSet(resultSet);
+        } catch (SQLException e) {
+            throw new SqlRuntimeException(e);
+        }
+    }
+
+    public Transaction getTransactionById(int id) {
+        final String sql = "SELECT * FROM transaction WHERE id = ?";
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                return getTransactionFromResultSet(resultSet);
+            } else {
+                throw new NoResultsInResultSetException("No transaction with id = " + id + " found in DB");
+            }
+
+        } catch (SQLException e) {
+            throw new SqlRuntimeException(e);
+        }
+    }
+
+    private Collection<Transaction> getTransactionsFromResultSet(ResultSet resultSet) throws SQLException {
+        Collection<Transaction> transactions = new ArrayList<>();
+        while (resultSet.next()) {
+            transactions.add(getTransactionFromResultSet(resultSet));
+        }
+        if (transactions.isEmpty()) {
+            throw new NoResultsInResultSetException("No transactions available with selected query parameters.");
+        }
+        return transactions;
+    }
+
+    private Transaction getTransactionFromResultSet(ResultSet resultSet) throws SQLException {
+        int id = resultSet.getInt("id");
+        TransactionType type = TransactionType.valueOf(resultSet.getString("type"));
+        String description = resultSet.getString("description");
+        BigDecimal amount = resultSet.getBigDecimal("amount");
+        LocalDate date = resultSet.getDate("date").toLocalDate();
+        return new Transaction(id, type, description, amount, date);
+    }
+
 }

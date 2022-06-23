@@ -36,6 +36,11 @@ public class DataReader {
         }
     }
 
+    public LocalDate getStrictDate() {
+        String date = sc.nextLine();
+        return LocalDate.parse(date, datePattern);
+    }
+
     public double getDouble() {
         try {
             return (sc.nextDouble());

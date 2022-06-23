@@ -1,32 +1,18 @@
 package application;
 
+import exceptions.NoResultsInResultSetException;
 import exceptions.NoSuchIdAvailableException;
 import exceptions.SqlRuntimeException;
 import io.DataReader;
 import model.TransactionType;
 import exceptions.NoSuchOptionException;
 import model.TransactionService;
-import java.math.BigDecimal;
 import java.util.InputMismatchException;
 import java.util.concurrent.TimeUnit;
 
 class BudgetAppControl {
-    private final DataReader reader;
-    private final TransactionService service;
-
-    BudgetAppControl() {
-        reader = new DataReader();
-        service = new TransactionService(reader);
-    }
-
-    public void readData() {
-        try {
-            service.readData();
-        } catch (SqlRuntimeException e) {
-            System.out.println(e.getCause());
-        }
-        System.out.println("Data loaded successfully");
-    }
+    private final DataReader reader = new DataReader();
+    private final TransactionService service = new TransactionService(reader);
 
     public void applicationMenu() {
         AppOption option;
@@ -38,7 +24,7 @@ class BudgetAppControl {
                 case MODIFY_TRANSACTION -> modifyTransaction();
                 case PRINT_TOTAL_INCOME_AMOUNT -> printTotalTransactionAmountByType(TransactionType.INCOME);
                 case PRINT_TOTAL_OUTCOME_AMOUNT -> printTotalTransactionAmountByType(TransactionType.OUTCOME);
-                case PRINT_LIST_OF_ALL_TRANSACTIONS -> printListOfAllTransactions();
+                case PRINT_LIST_OF_TRANSACTIONS -> printListOfTransactions();
                 case PRINT_BALANCE -> printBalance();
                 case DELETE_TRANSACTION -> deleteTransaction();
                 case EXIT -> exit();
@@ -48,7 +34,7 @@ class BudgetAppControl {
     }
 
     private void printOptions() {
-        System.out.println("Chose an option:");
+        System.out.println("\nChose an option:");
         for (AppOption value : AppOption.values()) {
             System.out.println(value.toString());
         }
@@ -86,12 +72,14 @@ class BudgetAppControl {
 
     private void modifyTransaction() {
         try {
-            service.updateTransactionById();
+            int id = service.getTransactionId();
+            service.printChosenTransaction(id);
+            service.updateTransactionById(id);
         } catch (InputMismatchException | IndexOutOfBoundsException e) {
             System.err.println("Modifying transaction failed. Incorrect input");
         } catch (SqlRuntimeException e) {
             System.err.println(e.getCause());
-        } catch (NoSuchIdAvailableException e) {
+        } catch (NoSuchIdAvailableException | NoResultsInResultSetException e) {
             System.err.println(e.getMessage());
         } finally {
             sleep(250);
@@ -99,26 +87,36 @@ class BudgetAppControl {
     }
 
     private void printTotalTransactionAmountByType(TransactionType type) {
-        BigDecimal totalAmount = service.getTotalTransactionAmountByType(type);
-        System.out.println("Total " + type.name() + " = " + totalAmount);
+        double amount = service.sumTransactionsByType(type);
+        System.out.println("Total " + type.name() + " = " + amount);
     }
 
-    private void printListOfAllTransactions() {
-        service.printAllTransactions();
+    private void printListOfTransactions() {
+        try {
+            service.printListOfTransactionsFor30Days();
+        } catch (NoResultsInResultSetException e) {
+            System.err.println(e.getMessage());
+        } finally {
+            sleep(250);
+        }
     }
 
     private void printBalance() {
-        BigDecimal balance = service.getBalance();
-        System.out.println("Balance of all transactions = " + balance);
+        double balance = service.getBalance();
+        System.out.println(balance);
     }
 
     private void deleteTransaction() {
         try {
-            service.deleteTransactionById();
+            int id = service.getTransactionId();
+            service.printChosenTransaction(id);
+            service.deleteTransactionById(id);
         } catch (InputMismatchException | IndexOutOfBoundsException e) {
             System.err.println("Deleting transaction failed. Incorrect input");
         } catch (SqlRuntimeException e) {
             System.err.println(e.getCause());
+        } catch (NoSuchIdAvailableException | NoResultsInResultSetException e) {
+            System.err.println(e.getMessage());
         } finally {
             sleep(250);
         }
@@ -144,7 +142,7 @@ class BudgetAppControl {
         MODIFY_TRANSACTION(2, "MODIFY TRANSACTION"),
         PRINT_TOTAL_INCOME_AMOUNT(3, "PRINT TOTAL INCOME"),
         PRINT_TOTAL_OUTCOME_AMOUNT(4, "PRINT TOTAL OUTCOME"),
-        PRINT_LIST_OF_ALL_TRANSACTIONS(5, "PRINT LIST OF ALL TRANSACTIONS"),
+        PRINT_LIST_OF_TRANSACTIONS(5, "PRINT LIST OF TRANSACTIONS"),
         PRINT_BALANCE(6, "PRINT BALANCE"),
         DELETE_TRANSACTION(7, "DELETE TRANSACTION");
 

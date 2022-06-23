@@ -1,24 +1,19 @@
 package model;
 
 import application.Patterns;
+import exceptions.NoSuchIdAvailableException;
 import io.DataReader;
-
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.time.LocalDate;
+import java.util.Collection;
 
 public class TransactionService {
-    private TransactionRepository transactionRepository;
-    private TransactionDao transactionDao;
-    private DataReader reader;
+    private final TransactionDao dao = new TransactionDao();
+    private final DataReader reader;
 
     public TransactionService(DataReader reader) {
-        transactionDao = new TransactionDao();
-        transactionRepository = new TransactionRepository();
         this.reader = reader;
-    }
-
-    public void readData() {
-        transactionRepository.setTransactions(transactionDao.readTransactionsFromDataBase());
     }
 
     private Transaction createTransactionFromInput() {
@@ -32,69 +27,72 @@ public class TransactionService {
                 " if you type anything else the date will be set up for Today: ");
         LocalDate date = reader.getDate();
         return new Transaction(type, description, amount, date);
-
     }
 
     public void addNewTransaction() {
         Transaction transaction = createTransactionFromInput();
-        int key = transactionDao.saveNewTransaction(transaction);
+        int key = dao.saveNewTransaction(transaction);
         System.out.println("Transaction has bee saved. id = " + key);
-        readData();
     }
 
-    public void updateTransactionById() {
-        int id = getTransactionId();
-        printChosenTransaction(id);
-        System.out.println("\nEnter new data:");
+    public void updateTransactionById(int id) {
         Transaction update = createTransactionFromInput();
-        transactionDao.modifyTransactionById(id, update);
-        readData();
-        Transaction updatedTransaction = transactionRepository.findTransactionById(id);
+        dao.modifyTransactionById(id, update);
+        Transaction updatedTransaction = dao.getTransactionById(id);
         System.out.println("Following transaction has been updated: \n" + updatedTransaction);
     }
 
-    public void deleteTransactionById() {
-        int id = getTransactionId();
-        printChosenTransaction(id);
-        transactionDao.deleteTransactionById(id);
-        System.out.println("Transaction with id = " + id + " has been deleted.");
-        readData();
+    public void deleteTransactionById(int id) {
+        boolean deleted = dao.deleteTransactionById(id);
+        if (deleted) {
+            System.out.println("Transaction with id = " + id + " has been deleted.");
+        } else {
+            throw new NoSuchIdAvailableException("No data deleted from DB (most probably there are " +
+                    "no records with selected id). Please try again.");
+        }
     }
 
-    public BigDecimal getTotalTransactionAmountByType(TransactionType type) {
-        return transactionRepository.getTransactions().stream()
-                .filter(t -> t.getType().equals(type))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    public double sumTransactionsByType(TransactionType type) {
+        return dao.sumTransactionsByType(type);
     }
 
-    public BigDecimal getBalance() {
-        return transactionRepository.getTransactions().stream()
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private int getTransactionId() {
-        printAllTransactions();
-        System.out.println("Choose id of transaction from list above:");
+    public int getTransactionId() {
+        printListOfTransactionsFor30Days();
+        System.out.println("Please input id of transaction");
         return reader.getInt();
     }
 
-    private void printChosenTransaction(int id) {
-        Transaction transactionToModify = transactionRepository.findTransactionById(id);
+    public double getBalance() {
+        return dao.getBalance();
+    }
+
+    public void printListOfTransactionsFor30Days() {
+        LocalDate to = LocalDate.now();
+        LocalDate from = to.minusMonths(1L);
+        String input;
+        do {
+            System.out.println("\n<<<< List of transactions from: " + from + " to: " + to + " >>>>\n");
+            Collection<Transaction> transactions = dao.getAllTransactionsInTimeframe(Date.valueOf(from), Date.valueOf(to));
+            for (Transaction t : transactions) {
+                System.out.println(t);
+            }
+            System.out.println("<<<< END OF LIST >>>>\n");
+            System.out.println("To see list of transactions from previous timeframe frame type 0." +
+                    " Type anything else to move forward.");
+            input = reader.getString();
+            to = from;
+            from = to.minusMonths(1L);
+        } while (input.equals("0"));
+
+    }
+
+    public void printChosenTransaction(int id) {
+        Transaction transactionToModify = dao.getTransactionById(id);
         System.out.println("You have chosen: " + transactionToModify);
     }
 
-    public void printAllTransactions() {
-        System.out.println("\nList of all transactions:");
-        for (Transaction transaction : transactionRepository.getTransactions()) {
-            System.out.println(transaction);
-        }
-        System.out.println("<<<< END OF LIST >>>>\n");
-    }
-
     public void closeConnection() {
-        transactionDao.close();
+        dao.close();
     }
 
 }
