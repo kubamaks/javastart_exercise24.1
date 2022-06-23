@@ -1,0 +1,23 @@
+Treść zadania
+
+Napisz aplikację służącą do zarządzania budżetem domowym. Powinna ona umożliwiać zarządzanie transakcjami. Transakcja to przychód lub wydatek.
+
+Powinna ona mieć opcje takie jak:
+
+    dodawanie transakcji
+    modyfikacja transakcji
+    usuwanie transakcji
+    wyświetlanie wszystkich przychodów
+    wyświetlanie wszystkich wydatków
+
+W aplikacji wykorzystaj wzorzec DAO
+
+Informacje o transakcjach powinny być przechowywane w bazie danych, a konkretnie w tabeli transaction(id, type, description, amount, date). Kolejne kolumny oznaczają:
+
+    id - automatycznie zwiększający się identyfikator rekordu
+    type - typ wpisu - wydatek lub przychód
+    description - opis transakcji
+    amount - kwota transakcji
+    date - data transakcji
+
+Aplikację stwórz w wybranej przez siebie technologii: aplikacja konsolowa lub spring.
